@@ -134,9 +134,14 @@ async function main() {
     await appendFile(reportPath, `${report.join('\n')}\n`);
     console.log(`\nDRY RUN: ${files.length} file(s) will be removed from vector store ${vectorStoreId}.`);
     if (deleteFiles) console.log('The underlying Azure files will also be permanently deleted.');
+    console.log('\nCleanup summary:');
+    console.log(`  Vector store: ${vectorStoreId}`);
+    console.log(`  Files to detach: ${files.length}`);
+    console.log(`  Permanently delete Azure files: ${deleteFiles ? 'YES' : 'NO'}`);
     console.log(`Report: ${reportPath}`);
-    const confirmation = (await ask('Review the report. Start cleanup? Type YES: ')).toUpperCase();
-    if (confirmation !== 'YES') {
+    const requiredConfirmation = deleteFiles ? 'DELETE FILES' : 'YES';
+    const confirmation = (await ask(`Review the report. Start cleanup? Type ${requiredConfirmation}: `)).toUpperCase();
+    if (confirmation !== requiredConfirmation) {
         await log('ABORTED after dry-run');
         console.log('Cleanup cancelled.');
         return;

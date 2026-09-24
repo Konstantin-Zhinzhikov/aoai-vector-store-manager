@@ -271,7 +271,15 @@ async function main() {
     const inventory = await loadInventory(endpoint, apiKey, uniqueSourceIds, destinationId, logPath);
     await printReport(inventory, logPath, reportPath, endpoint, destinationId);
     await logLine(logPath, `DRY_RUN candidates=${inventory.candidates.length} pending=${inventory.candidates.filter((f) => !f.alreadyAttached).length}`);
-    const confirmation = (await ask('Dry-run looks correct. Start real copying? Type YES: ')).toUpperCase();
+    const pendingCount = inventory.candidates.filter((file) => !file.alreadyAttached).length;
+    const existingCount = inventory.candidates.length - pendingCount;
+    console.log('\nCopy summary:');
+    console.log(`  Source stores: ${uniqueSourceIds.length}`);
+    console.log(`  Destination: ${destinationId}`);
+    console.log(`  Files to attach: ${pendingCount}`);
+    console.log(`  Already attached: ${existingCount}`);
+    console.log(`  Missing Azure files: ${inventory.missingFiles.length}`);
+    const confirmation = (await ask('Start real copying? Type YES: ')).toUpperCase();
     if (confirmation !== 'YES') {
         await logLine(logPath, 'ABORTED after dry-run');
         return;
