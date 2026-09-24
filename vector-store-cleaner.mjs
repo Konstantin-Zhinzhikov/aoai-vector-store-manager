@@ -97,19 +97,12 @@ async function listFiles(endpoint, apiKey, vectorStoreId) {
     return files;
 }
 
-function hasDeleteFlag() {
-    return process.argv.slice(2).some((argument) => argument === '--delete-files');
-}
-
 async function main() {
-    const deleteFiles = hasDeleteFlag();
     console.log('Azure OpenAI Vector Store cleaner\n');
-    console.log(deleteFiles
-        ? 'Mode: unattach files and permanently delete Azure files (--delete-files)'
-        : 'Mode: unattach files only; Azure files will be preserved');
     const endpoint = (await ask(`Azure OpenAI endpoint [${process.env.AZURE_OPENAI_ENDPOINT ?? ''}]: `)) || process.env.AZURE_OPENAI_ENDPOINT;
     const apiKey = await askSecret('Azure token/API key: ');
     const vectorStoreId = await ask('Vector store ID to clean: ');
+    const deleteFiles = (await ask('Permanently delete underlying Azure files? Type YES to enable, otherwise they will be preserved: ')).toUpperCase() === 'YES';
     if (!endpoint || !apiKey || !vectorStoreId) throw new Error('Endpoint, token, and vector store ID are required.');
     const parsedEndpoint = new URL(endpoint);
     if (parsedEndpoint.protocol !== 'https:') throw new Error('Azure endpoint must use HTTPS.');
