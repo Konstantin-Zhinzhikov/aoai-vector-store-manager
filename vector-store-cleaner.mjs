@@ -11,6 +11,37 @@ const rl = readline.createInterface({input, output});
 let logPath;
 
 const ask = async (question) => (await rl.question(question)).trim();
+
+async function askSecret(question) {
+    if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== 'function') {
+        return ask(question);
+    }
+    output.write(question);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    return new Promise((resolve, reject) => {
+        let value = '';
+        const onData = (chunk) => {
+            const key = chunk.toString('utf8');
+            if (key === '\r' || key === '\n') {
+                process.stdin.setRawMode(false);
+                process.stdin.removeListener('data', onData);
+                output.write('\n');
+                resolve(value.trim());
+            } else if (key === '\u0003') {
+                process.stdin.setRawMode(false);
+                process.stdin.removeListener('data', onData);
+                reject(new Error('Input interrupted.'));
+            } else if (key === '\b' || key === '\u007f') {
+                value = value.slice(0, -1);
+            } else {
+                value += key;
+            }
+        };
+        process.stdin.on('data', onData);
+    });
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function log(message) {
@@ -73,7 +104,7 @@ async function main() {
         ? 'Mode: unattach files and permanently delete Azure files (--delete-files)'
         : 'Mode: unattach files only; Azure files will be preserved');
     const endpoint = (await ask(`Azure OpenAI endpoint [${process.env.AZURE_OPENAI_ENDPOINT ?? ''}]: `)) || process.env.AZURE_OPENAI_ENDPOINT;
-    const apiKey = await ask('Azure token/API key: ');
+    const apiKey = await askSecret('Azure token/API key: ');
     const vectorStoreId = await ask('Vector store ID to clean: ');
     if (!endpoint || !apiKey || !vectorStoreId) throw new Error('Endpoint, token, and vector store ID are required.');
     const parsedEndpoint = new URL(endpoint);
