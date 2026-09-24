@@ -1,0 +1,11 @@
+{
+  "name": "aoai-vector-store-copier",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "copy": "node vector-store-copier.mjs",
+    "clean": "node vector-store-cleaner.mjs"
+  }
+}
