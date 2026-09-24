@@ -7,7 +7,7 @@ const API_PREFIX = '/openai/v1';
 const PAGE_SIZE = 100;
 const REQUEST_RETRIES = 5;
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 429, 500, 502, 503, 504]);
-const rl = readline.createInterface({input, output});
+let rl = readline.createInterface({input, output});
 let logPath;
 
 const ask = async (question) => (await rl.question(question)).trim();
@@ -16,21 +16,25 @@ async function askSecret(question) {
     if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== 'function') {
         return ask(question);
     }
+    rl.close();
     output.write(question);
     process.stdin.setRawMode(true);
     process.stdin.resume();
     return new Promise((resolve, reject) => {
         let value = '';
+        const finish = () => {
+            process.stdin.setRawMode(false);
+            process.stdin.removeListener('data', onData);
+            rl = readline.createInterface({input, output});
+        };
         const onData = (chunk) => {
             const key = chunk.toString('utf8');
             if (key === '\r' || key === '\n') {
-                process.stdin.setRawMode(false);
-                process.stdin.removeListener('data', onData);
+                finish();
                 output.write('\n');
                 resolve(value.trim());
             } else if (key === '\u0003') {
-                process.stdin.setRawMode(false);
-                process.stdin.removeListener('data', onData);
+                finish();
                 reject(new Error('Input interrupted.'));
             } else if (key === '\b' || key === '\u007f') {
                 value = value.slice(0, -1);
