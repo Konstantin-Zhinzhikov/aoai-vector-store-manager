@@ -145,6 +145,7 @@ async function main() {
     }
     let detached = 0;
     let deleted = 0;
+    let alreadyAbsent = 0;
     let failed = 0;
     for (const [index, file] of files.entries()) {
         console.log(`\n[${index + 1}/${files.length}] ${file.id}`);
@@ -154,10 +155,17 @@ async function main() {
             await log(`DETACHED file=${file.id} vector_store=${vectorStoreId}`);
             console.log('  Unattach: OK');
             if (deleteFiles) {
-                await request(endpoint, apiKey, `/files/${file.id}`, {method: 'DELETE'});
-                deleted++;
-                await log(`DELETED file=${file.id} permanently=true`);
-                console.log('  Delete Azure file: OK');
+                try {
+                    await request(endpoint, apiKey, `/files/${file.id}`, {method: 'DELETE'});
+                    deleted++;
+                    await log(`DELETED file=${file.id} permanently=true`);
+                    console.log('  Delete Azure file: OK');
+                } catch (error) {
+                    if (error.status !== 404) throw error;
+                    alreadyAbsent++;
+                    await log(`ALREADY_ABSENT file=${file.id} permanently=true`);
+                    console.log('  Delete Azure file: already absent');
+                }
             }
         } catch (error) {
             failed++;
@@ -166,7 +174,7 @@ async function main() {
         }
     }
     await log(`FINISHED detached=${detached} deleted=${deleted} failed=${failed}`);
-    await appendFile(reportPath, `\nEXECUTION RESULT\n----------------\nDetached: ${detached}\nPermanently deleted: ${deleted}\nFailed: ${failed}\nResult: ${failed ? 'FAILED' : 'SUCCESS'}\n`);
+    await appendFile(reportPath, `\nEXECUTION RESULT\n----------------\nDetached: ${detached}\nPermanently deleted: ${deleted}\nAlready absent: ${alreadyAbsent}\nFailed: ${failed}\nResult: ${failed ? 'FAILED' : 'SUCCESS'}\n`);
     console.log(`\nOperational log: ${logPath}`);
     console.log(`Report: ${reportPath}`);
     if (failed) process.exitCode = 1;
